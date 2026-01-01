@@ -10,12 +10,17 @@ from telegram.ext import (
 )
 import yt_dlp
 
-BOT_TOKEN = "8208876135:AAGm9nOwTcyqR2WFNH-174PKecmUISKlS20"
+# 🔐 BOT TOKEN (Render / Railway / Cloud compatible)
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise ValueError("❌ BOT_TOKEN environment variable not set")
+
 CHANNEL_USERNAME = "@imdhaval_9999"
+CHANNEL_LINK = "https://t.me/imdhaval_9999"
 
 os.makedirs("downloads", exist_ok=True)
 
-# 🔐 Verified users memory (restart ke baad reset hoga)
+# 🔐 Verified users (memory based – restart pe reset)
 verified_users = set()
 
 # ================= START COMMAND =================
@@ -27,7 +32,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     keyboard = [
-        [InlineKeyboardButton("📢 Join Channel", url="https://t.me/imdhaval_9999")],
+        [InlineKeyboardButton("📢 Join Channel", url=CHANNEL_LINK)],
         [
             InlineKeyboardButton("✅ Joined", callback_data="joined"),
             InlineKeyboardButton("❌ Not Joined", callback_data="not_joined")
@@ -68,7 +73,7 @@ async def verify_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "📢 Please join the channel first\n"
                     "🔄 Then click *Joined* again"
                 )
-        except:
+        except Exception:
             await query.edit_message_text(
                 "⚠️ *Verification Error!* 😵\n\n"
                 "👑 Make sure bot is admin in the channel"
@@ -81,7 +86,7 @@ async def verify_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 # ================= WELCOME MESSAGE =================
-async def send_welcome(update):
+async def send_welcome(update: Update):
     welcome_msg = (
         "🎧 *Welcome to YouTube MP3 Downloader Bot!* 🎶\n\n"
         "✨ *UNLIMITED FEATURES:*\n"
@@ -99,22 +104,18 @@ async def send_welcome(update):
 
 # ================= AUDIO SENDER =================
 async def send_audio(update, filepath, title, size_mb):
-    try:
-        with open(filepath, "rb") as audio:
-            await update.message.reply_audio(
-                audio=audio,
-                title=title[:50],
-                performer="UNLIMITED MP3 Bot",
-                caption=(
-                    f"✅ *{title[:30]}*\n"
-                    f"📏 *{size_mb}MB* (Unlimited!)\n"
-                    "📥 *Long press to save*"
-                ),
-                parse_mode="Markdown"
-            )
-        return True
-    except:
-        return False
+    with open(filepath, "rb") as audio:
+        await update.message.reply_audio(
+            audio=audio,
+            title=title[:50],
+            performer="UNLIMITED MP3 Bot",
+            caption=(
+                f"✅ *{title[:30]}*\n"
+                f"📏 *{size_mb}MB* (Unlimited!)\n"
+                "📥 *Long press to save*"
+            ),
+            parse_mode="Markdown"
+        )
 
 # ================= URL HANDLER =================
 async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -141,8 +142,9 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("🔄 *Downloading audio...* 🎶", parse_mode="Markdown")
 
+    # clean old files
     for f in os.listdir("downloads"):
-        os.remove(f"downloads/{f}")
+        os.remove(os.path.join("downloads", f))
 
     try:
         ydl_opts = {
@@ -156,7 +158,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
             title = info.get("title", "Audio")
 
         for f in os.listdir("downloads"):
-            filepath = f"downloads/{f}"
+            filepath = os.path.join("downloads", f)
             size_mb = round(os.path.getsize(filepath) / (1024 * 1024), 1)
 
             await update.message.reply_text(
@@ -164,9 +166,9 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown"
             )
 
-            if await send_audio(update, filepath, title, size_mb):
-                os.remove(filepath)
-                return
+            await send_audio(update, filepath, title, size_mb)
+            os.remove(filepath)
+            return
 
         await update.message.reply_text("❌ No audio found")
 
