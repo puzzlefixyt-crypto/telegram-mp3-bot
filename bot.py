@@ -10,20 +10,20 @@ from telegram.ext import (
 )
 import yt_dlp
 
-# 🔐 BOT TOKEN (Render / Railway / Cloud compatible)
+# ================= CONFIG =================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
-    raise ValueError("❌ BOT_TOKEN environment variable not set")
+    raise RuntimeError("BOT_TOKEN environment variable not set")
 
 CHANNEL_USERNAME = "@imdhaval_9999"
 CHANNEL_LINK = "https://t.me/imdhaval_9999"
 
 os.makedirs("downloads", exist_ok=True)
 
-# 🔐 Verified users (memory based – restart pe reset)
+# in-memory verified users
 verified_users = set()
 
-# ================= START COMMAND =================
+# ================= START =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -35,22 +35,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("📢 Join Channel", url=CHANNEL_LINK)],
         [
             InlineKeyboardButton("✅ Joined", callback_data="joined"),
-            InlineKeyboardButton("❌ Not Joined", callback_data="not_joined")
-        ]
+            InlineKeyboardButton("❌ Not Joined", callback_data="not_joined"),
+        ],
     ]
 
     await update.message.reply_text(
         "👋 *Welcome to YouTube MP3 Downloader Bot!* 🎧🎶\n\n"
-        "📢 *Important Notice!*\n"
-        "To use this bot, you must join our official channel first 👇\n\n"
-        "✅ Join channel\n"
-        "🔘 Click *Joined* to verify\n\n"
-        "⚠️ Channel join is mandatory!",
+        "📢 To use this bot, please join our channel first 👇\n\n"
+        "After joining, click *Joined* ✅",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-# ================= VERIFY BUTTON =================
+# ================= VERIFY =================
 async def verify_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
@@ -59,62 +56,53 @@ async def verify_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "joined":
         try:
             member = await context.bot.get_chat_member(CHANNEL_USERNAME, user_id)
-            if member.status in ["member", "administrator", "creator"]:
+            if member.status in ("member", "administrator", "creator"):
                 verified_users.add(user_id)
                 await query.edit_message_text(
                     "🎉 *Verification Successful!* ✅\n\n"
-                    "🚀 You now have FULL UNLIMITED access!\n"
                     "👇 Send any YouTube link now",
-                    parse_mode="Markdown"
+                    parse_mode="Markdown",
                 )
             else:
                 await query.edit_message_text(
-                    "❌ *You are not joined yet!* 😕\n\n"
-                    "📢 Please join the channel first\n"
-                    "🔄 Then click *Joined* again"
+                    "❌ *You have not joined yet!* 😕\n"
+                    "Please join the channel and try again."
                 )
         except Exception:
             await query.edit_message_text(
-                "⚠️ *Verification Error!* 😵\n\n"
-                "👑 Make sure bot is admin in the channel"
+                "⚠️ Verification failed.\nMake sure bot is admin in channel."
             )
 
     elif query.data == "not_joined":
         await query.edit_message_text(
-            "🚫 *Access Denied!* ❌\n\n"
-            "📢 Channel join is compulsory to use this bot"
+            "🚫 Channel join is mandatory to use this bot."
         )
 
-# ================= WELCOME MESSAGE =================
+# ================= WELCOME =================
 async def send_welcome(update: Update):
-    welcome_msg = (
-        "🎧 *Welcome to YouTube MP3 Downloader Bot!* 🎶\n\n"
-        "✨ *UNLIMITED FEATURES:*\n"
-        "📥 No file size limit (100MB+ OK!)\n"
+    await update.message.reply_text(
+        "🎧 *YouTube MP3 Downloader Bot Ready!* 🎶\n\n"
+        "✨ *Features:*\n"
         "⚡ Unlimited downloads\n"
-        "📱 Perfect on mobile\n"
-        "🌐 24/7 online FREE\n\n"
-        "🔗 *How to use:*\n"
-        "👉 Send any YouTube link\n"
-        "🎵 Get full audio instantly\n\n"
-        "🚀 *Unlimited mode activated!*\n"
-        "👇 Send link now"
+        "📥 No size limit\n"
+        "📱 Mobile friendly\n\n"
+        "👇 Send YouTube link now",
+        parse_mode="Markdown",
     )
-    await update.message.reply_text(welcome_msg, parse_mode="Markdown")
 
-# ================= AUDIO SENDER =================
+# ================= AUDIO SEND =================
 async def send_audio(update, filepath, title, size_mb):
     with open(filepath, "rb") as audio:
         await update.message.reply_audio(
             audio=audio,
-            title=title[:50],
+            title=title[:60],
             performer="UNLIMITED MP3 Bot",
             caption=(
-                f"✅ *{title[:30]}*\n"
-                f"📏 *{size_mb}MB* (Unlimited!)\n"
-                "📥 *Long press to save*"
+                f"🎵 *{title[:30]}*\n"
+                f"📏 *{size_mb} MB*\n"
+                "📥 Long press to save"
             ),
-            parse_mode="Markdown"
+            parse_mode="Markdown",
         )
 
 # ================= URL HANDLER =================
@@ -123,10 +111,9 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_id not in verified_users:
         await update.message.reply_text(
-            "🚫 *Access Restricted!* ❌\n\n"
-            "📢 Please join our channel first\n"
-            "👉 Use /start to verify",
-            parse_mode="Markdown"
+            "🚫 *Access Restricted!*\n"
+            "Please use /start and verify first.",
+            parse_mode="Markdown",
         )
         return
 
@@ -134,13 +121,15 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if "youtube.com" not in url and "youtu.be" not in url:
         await update.message.reply_text(
-            "❌ *Invalid URL!* 😕\n"
-            "`https://youtu.be/VIDEO_ID`",
-            parse_mode="Markdown"
+            "❌ Invalid YouTube link!",
+            parse_mode="Markdown",
         )
         return
 
-    await update.message.reply_text("🔄 *Downloading audio...* 🎶", parse_mode="Markdown")
+    await update.message.reply_text(
+        "🔄 Downloading audio...",
+        parse_mode="Markdown",
+    )
 
     # clean old files
     for f in os.listdir("downloads"):
@@ -150,7 +139,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": "downloads/%(title)s.%(ext)s",
-            "noplaylist": True
+            "noplaylist": True,
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -160,12 +149,6 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for f in os.listdir("downloads"):
             filepath = os.path.join("downloads", f)
             size_mb = round(os.path.getsize(filepath) / (1024 * 1024), 1)
-
-            await update.message.reply_text(
-                f"📤 *Sending {size_mb}MB audio...*",
-                parse_mode="Markdown"
-            )
-
             await send_audio(update, filepath, title, size_mb)
             os.remove(filepath)
             return
