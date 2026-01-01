@@ -20,7 +20,6 @@ CHANNEL_LINK = "https://t.me/imdhaval_9999"
 
 os.makedirs("downloads", exist_ok=True)
 
-# in-memory verified users
 verified_users = set()
 
 # ================= START =================
